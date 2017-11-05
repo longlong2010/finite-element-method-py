@@ -20,5 +20,5 @@ class Constraint(Enum):
 	def __init__(self, dof):
 		self.dof = dof;
 
-	def getDof():
+	def getDof(self):
 		return self.dof;
