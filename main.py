@@ -49,7 +49,6 @@ if __name__ == '__main__':
 					n3 = nodes[row[7]];
 					n4 = nodes[row[8]];
 					model.addElement(Tet4Element(n1, n2, n3, n4, m));
-	print(l);	
 	model.solve();
 	#n1 = Node(1, 0, 0);
 	#n2 = Node(0, 1, 0);

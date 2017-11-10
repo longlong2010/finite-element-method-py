@@ -100,7 +100,7 @@ class Element(metaclass = abc.ABCMeta):
 		for p in self.points:
 			B = self.getStrainMatrix(p);
 			J = self.getJacobi(p);
-			Ke += B.T.dot(D).dot(B) * abs(numpy.linalg.det(J));
+			Ke += B.T.dot(D).dot(B) * abs(numpy.linalg.det(J)) * p[4];
 		return Ke;
 	
 	def getMassMatrix(self):
@@ -110,36 +110,36 @@ class Element(metaclass = abc.ABCMeta):
 		for p in self.points:
 			N = self.getShapeMatrix(p);
 			J = self.getJacobi(p);
-			Me += rho * N.T.dot(N) * abs(numpy.linalg.det(J));
+			Me += rho * N.T.dot(N) * abs(numpy.linalg.det(J)) * p[4];
 		return Me;
 
 	def getStressStrainMatrix(self):
 		D = numpy.zeros((6, 6));
 		E = self.material.getProperty(MaterialProperty.E);
 		nu = self.material.getProperty(MaterialProperty.nu);
-		D[0][0] = 1;
-		D[0][1] = nu / (1 - nu);
-		D[0][2] = nu / (1 - nu);
+		D[0][0] = 1 - nu;
+		D[0][1] = nu;
+		D[0][2] = nu;
 		
-		D[1][0] = nu / (1 - nu);
-		D[1][1] = 1;
-		D[1][2] = nu / (1 - nu);
+		D[1][0] = nu;
+		D[1][1] = 1 - nu;
+		D[1][2] = nu;
 		
-		D[2][0] = nu / (1 - nu);
-		D[2][1] = nu / (1 - nu);
-		D[2][2] = 1;
+		D[2][0] = nu;
+		D[2][1] = nu;
+		D[2][2] = 1 - nu;
 
-		D[3][3] = (1 - 2 * nu) / (2 * (1 - nu));
-		D[4][4] = (1 - 2 * nu) / (2 * (1 - nu));
-		D[5][5] = (1 - 2 * nu) / (2 * (1 - nu));
+		D[3][3] = (1 - 2 * nu) / 2;
+		D[4][4] = (1 - 2 * nu) / 2;
+		D[5][5] = (1 - 2 * nu) / 2;
 
-		D *= E * (1 - nu) / ((1 + nu) * (1 - 2 * nu));
+		D *= E / ((1 + nu) * (1 - 2 * nu));
 		return D;
 
 
 class Tet4Element(Element):
 	def __init__(self, n1, n2, n3, n4, material):
-		super(Tet4Element, self).__init__([n1, n2, n3, n4], material, [[0.25, 0.25, 0.25, 0.25, 1]]);
+		super(Tet4Element, self).__init__([n1, n2, n3, n4], material, [[0.25, 0.25, 0.25, 0.25, 1 / 6]]);
 
 	def getShapeMatrix(self, p):
 		[l1, l2, l3, l4, w] = p;
