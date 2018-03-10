@@ -1,5 +1,6 @@
 from geometry import *;
 import scipy.sparse;
+from scipy.sparse import linalg;
 
 class Model:
 	def __init__(self):
@@ -25,8 +26,8 @@ class Model:
 
 	def init(self):
 		ndof = self.getDofNum();
-		#self.K = scipy.sparse.lil_matrix((ndof, ndof));
-		self.K = numpy.zeros((ndof, ndof));
+		self.K = scipy.sparse.lil_matrix((ndof, ndof));
+		#self.K = numpy.zeros((ndof, ndof));
 		self.R = numpy.zeros((ndof, 1));
 
 	def integrate(self):
@@ -47,7 +48,7 @@ class Model:
 				for j in range(0, size):
 					mi = m[i];
 					mj = m[j];
-					self.K[mi][mj] += Ke[i][j];
+					self.K[mi, mj] += Ke[i][j];
 
 	def integrateLoad(self):
 		k = 0;
@@ -74,19 +75,21 @@ class Model:
 			for d in dofs:
 				for c, v in constraints.items():
 					if c.getDof() == d:
-						self.K[k + dofn][k + dofn] += 1e20;
-						self.R[k + dofn][0] = v * self.K[k + dofn][k + dofn];
+						self.K[k + dofn, k + dofn] += 1e20;
+						self.R[k + dofn][0] = v * self.K[k + dofn, k + dofn];
 				dofn += 1;
 			k += n.getDofNum();
 	
 	def solveEquations(self):
-		u = numpy.linalg.solve(self.K, self.R);
+		#u = numpy.linalg.solve(self.K, self.R);
+		u = linalg.cg(self.K, self.R)[0];
 		k = 0;
 		for n in self.nodes:
 			dofs = n.getDofs();
 			dofn = 0;
 			for d in dofs:
-				n.setValue(d, u[k + dofn][0]);
+				n.setValue(d, u[k + dofn]);
+				#n.setValue(d, u[k + dofn][0]);
 				dofn += 1;
 			k += n.getDofNum();
 
