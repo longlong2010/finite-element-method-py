@@ -82,7 +82,7 @@ class Model:
 	
 	def solveEquations(self):
 		#u = numpy.linalg.solve(self.K, self.R);
-		u = linalg.cg(self.K, self.R)[0];
+		u = linalg.cg(self.K.tocsr(), self.R)[0];
 		k = 0;
 		for n in self.nodes:
 			dofs = n.getDofs();
