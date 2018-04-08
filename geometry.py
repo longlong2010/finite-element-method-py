@@ -83,15 +83,32 @@ class Element(metaclass = abc.ABCMeta):
 	@abc.abstractmethod
 	def getShapeMatrix(self, p):
 		pass;
-	
-	@abc.abstractmethod
-	def getStrainMatrix(self, p):
-		pass;
 
 	def getJacobi(self, p):
 		der = self.getShapeDerMatrix(p);
 		coord = self.getCoord();
 		return der.dot(coord);
+	
+	def getStrainMatrix(self, p):
+		der = self.getShapeDerMatrix(p);
+		J = self.getJacobi(p);
+		Der = numpy.linalg.inv(J).dot(der);
+		ndof = self.getDofNum();
+		nnode = self.getNodeNum();
+		B = numpy.zeros((6, ndof));
+		for i in range(0, nnode):
+			k = i * 3;
+			for j in range(0, 3):
+				B[j][i * 3 + j] = Der[j][i];
+			B[3][k] = Der[1][i];
+			B[3][k + 1] = Der[0][i];
+			
+			B[4][k + 1] = Der[2][i];
+			B[4][k + 2] = Der[1][i];
+			
+			B[5][k] = Der[2][i];
+			B[5][k + 2] = Der[0][i];
+		return B;
 	
 	def getStiffMatrix(self):
 		ndof = self.getDofNum();
@@ -138,8 +155,8 @@ class Element(metaclass = abc.ABCMeta):
 
 
 class Tet4Element(Element):
-	def __init__(self, n1, n2, n3, n4, material):
-		super(Tet4Element, self).__init__([n1, n2, n3, n4], material, [[0.25, 0.25, 0.25, 0.25, 1 / 6]]);
+	def __init__(self, nodes, material):
+		super(Tet4Element, self).__init__(nodes, material, [[0.25, 0.25, 0.25, 0.25, 1 / 6]]);
 
 	def getShapeMatrix(self, p):
 		[l1, l2, l3, l4, w] = p;
@@ -155,27 +172,6 @@ class Tet4Element(Element):
 			[0, 1, 0, -1],
 			[0, 0, 1, -1]
 		]);
-
-	def getStrainMatrix(self, p):
-		der = self.getShapeDerMatrix(p);
-		J = self.getJacobi(p);
-		Der = numpy.linalg.inv(J).dot(der);
-		ndof = self.getDofNum();
-		nnode = self.getNodeNum();
-		B = numpy.zeros((6, ndof));
-		for i in range(0, nnode):
-			k = i * 3;
-			for j in range(0, 3):
-				B[j][i * 3 + j] = Der[j][i];
-			B[3][k] = Der[1][i];
-			B[3][k + 1] = Der[0][i];
-			
-			B[4][k + 1] = Der[2][i];
-			B[4][k + 2] = Der[1][i];
-			
-			B[5][k] = Der[2][i];
-			B[5][k + 2] = Der[0][i];
-		return B;
 	
 	def getStress(self):
 		ndof = self.getDofNum();
@@ -191,3 +187,80 @@ class Tet4Element(Element):
 		D = self.getStressStrainMatrix();
 		B = self.getStrainMatrix(self.points[0]);
 		return D.dot(B).dot(u);
+
+class Tet10Element(Element):
+	def __init__(self, nodes, material):
+		alpha = 0.58541020;
+		beta = 0.13819660;
+		super(Tet10Element, self).__init__(nodes, material, [
+				[alpha, beta, beta, beta, 1 / 24], 
+				[beta, alpha, beta, beta, 1 / 24], 
+				[beta, beta, alpha, beta, 1 / 24], 
+				[beta, beta, beta, alpha, 1 / 24]]);
+
+	def getShapeMatrix(self, p):
+		[l1, l2, l3, l4, w] = p;
+		nnode = self.getNodeNum();
+		ndof = self.getDofNum();
+		Fun = numpy.zeros(nnode);
+		Fun[0] = l1 * (2 * l1 - 1);
+		Fun[1] = l2 * (2 * l2 - 1);
+		Fun[2] = l3 * (2 * l3 - 1);
+		Fun[3] = l4 * (2 * l4 - 1);
+		Fun[4] = 4 * l1 * l2;
+		Fun[5] = 4 * l2 * l3;
+		Fun[6] = 4 * l1 * l3;
+		Fun[7] = 4 * l1 * l4;
+		Fun[8] = 4 * l2 * l4;
+		Fun[9] = 4 * l3 * l4;
+		N = numpy.zeros((3, ndof));
+		for i in range(0, ndof):
+			N[i % 3][i] = Fun[i % 3];
+		return N;
+
+	def getShapeDerMatrix(self, p):
+		[l1, l2, l3, l4, w] = p;
+		nnode = self.getNodeNum();
+		Der = numpy.zeros(3, nnode);
+		for i in range(0, 3):
+			 Der[i][i] = 4 * p[i] - 1;
+			 Der[i][3] = 1 - 4 * p[3];
+
+		Der[0][4] = 4 * l2;
+		Der[1][4] = 4 * l1;
+
+		Der[1][5] = 4 * l3;
+		Der[2][5] = 4 * l2;
+
+		Der[0][6] = 4 * l3;
+		Der[2][6] = 4 * l1;
+
+		Der[0][7] = 4 * (l4 - l1);
+		Der[1][7] = -4 * l1;
+		Der[2][7] = -4 * l1;
+
+		Der[0][8] = -4 * l2;
+		Der[1][8] = 4 * (l4 - l2);
+		Der[2][8] = -4 * l2;
+
+		Der[0][9] = -4 * l3;
+		Der[1][9] = -4 * l3;
+		Der[2][9] = 4 * (l4 - l3);
+		return Der;
+	
+	def getStress(self):
+		ndof = self.getDofNum();
+		u = numpy.zeros((ndof, 1));
+		k = 0;
+		for n in self.nodes:
+			dofs = n.getDofs();
+			ndof = 0;
+			for d in dofs:
+				u[k + ndof][0] = n.values[d];
+				ndof += 1;
+			k += n.getDofNum();
+		D = self.getStressStrainMatrix();
+		B = numpy.zeros(6, ndof);
+		for p in self.points:
+			B += self.getStrainMatrix(p);
+		return D.dot(B).dot(u) / len(self.points);
