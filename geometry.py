@@ -221,7 +221,7 @@ class Tet10Element(Element):
 	def getShapeDerMatrix(self, p):
 		[l1, l2, l3, l4, w] = p;
 		nnode = self.getNodeNum();
-		Der = numpy.zeros(3, nnode);
+		Der = numpy.zeros((3, nnode));
 		for i in range(0, 3):
 			 Der[i][i] = 4 * p[i] - 1;
 			 Der[i][3] = 1 - 4 * p[3];
