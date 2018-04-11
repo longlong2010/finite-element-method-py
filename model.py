@@ -26,8 +26,7 @@ class Model:
 
 	def init(self):
 		ndof = self.getDofNum();
-		self.K = scipy.sparse.lil_matrix((ndof, ndof));
-		#self.K = numpy.zeros((ndof, ndof));
+		self.K = scipy.sparse.dok_matrix((ndof, ndof));
 		self.R = numpy.zeros((ndof, 1));
 
 	def integrate(self):
@@ -81,7 +80,6 @@ class Model:
 			k += n.getDofNum();
 	
 	def solveEquations(self):
-		#u = numpy.linalg.solve(self.K, self.R);
 		u = linalg.cg(self.K.tocsr(), self.R)[0];
 		k = 0;
 		for n in self.nodes:
@@ -89,7 +87,6 @@ class Model:
 			dofn = 0;
 			for d in dofs:
 				n.setValue(d, u[k + dofn]);
-				#n.setValue(d, u[k + dofn][0]);
 				dofn += 1;
 			k += n.getDofNum();
 
