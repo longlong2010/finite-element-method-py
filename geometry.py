@@ -6,7 +6,9 @@ from load import *;
 from property import *;
 
 class Node:
-	def __init__(self, x, y, z):
+	def __init__(self, nid, x, y, z):
+		self.nid = nid;
+		self.fid = 0;
 		self.x = x;
 		self.y = y;
 		self.z = z;
@@ -19,6 +21,15 @@ class Node:
 		self.loads = dict();
 		self.constraints = dict();
 		self.values = dict();
+
+	def getNid(self):
+		return self.nid;
+
+	def getFid(self):
+		return self.fid;
+
+	def setFid(self, fid):
+		self.fid = fid;
 
 	def addLoad(self, load, v):
 		if self.loads.__contains__(load):
@@ -251,6 +262,7 @@ class Tet10Element(Element):
 	def getStress(self):
 		ndof = self.getDofNum();
 		u = numpy.zeros((ndof, 1));
+		B = numpy.zeros((6, ndof));
 		k = 0;
 		for n in self.nodes:
 			dofs = n.getDofs();
@@ -260,7 +272,16 @@ class Tet10Element(Element):
 				ndof += 1;
 			k += n.getDofNum();
 		D = self.getStressStrainMatrix();
-		B = numpy.zeros(6, ndof);
-		for p in self.points:
-			B += self.getStrainMatrix(p);
-		return D.dot(B).dot(u) / len(self.points);
+		points = [
+			[1, 0, 0, 0, 0],
+			[0, 1, 0, 0, 0],
+			[0, 0, 1, 0, 0],
+			[0, 0, 0, 1, 0]
+		];
+		stress = numpy.zeros((6, 4));
+		k = 0;
+		for p in points:
+			B = self.getStrainMatrix(p);
+			stress[:,k] = D.dot(B).dot(u).reshape((6,));
+			k += 1;
+		return stress;

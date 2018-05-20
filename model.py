@@ -1,6 +1,7 @@
 from geometry import *;
 import scipy.sparse;
 from scipy.sparse import linalg;
+import time;
 
 class Model:
 	def __init__(self):
@@ -11,6 +12,9 @@ class Model:
 		nodes = e.getNodes();
 		for n in nodes:
 			if n not in self.nodes:
+				if len(self.nodes) > 0:
+					_n = self.nodes[-1];
+					n.setFid( _n.getFid() + _n.getDofNum());
 				self.nodes.append(n);
 		if e not in self.elements:
 			self.elements.append(e);
@@ -38,10 +42,11 @@ class Model:
 			m = dict();
 			l = 0;
 			for n in nodes:
-				k = self.nodes.index(n) * n.getDofNum();
+				k = n.getFid();
 				for i in range(0, n.getDofNum()):
 					m[l] = k + i;
 					l += 1;
+
 			Ke = e.getStiffMatrix();
 			for i in range(0, size):
 				for j in range(0, size):
@@ -50,34 +55,30 @@ class Model:
 					self.K[mi, mj] += Ke[i][j];
 
 	def integrateLoad(self):
-		k = 0;
 		for n in self.nodes:
 			dofs = n.getDofs();
 			dofn = 0;
+			k = n.getFid();
 			for d in dofs:
 				loads = n.getLoads();
 				for l, v in loads.items():
 					if l.getDof() == d:
 						self.R[k + dofn][0] = v;
 				dofn += 1;
-			k += n.getDofNum();
-
 
 	def addConstraint(self):
 		ndof = self.getDofNum();
-		k = 0;
 		for n in self.nodes:
 			constraints = n.getConstraints();
 			dofs = n.getDofs();
-
 			dofn = 0;
+			k = n.getFid();
 			for d in dofs:
 				for c, v in constraints.items():
 					if c.getDof() == d:
 						self.K[k + dofn, k + dofn] += 1e20;
 						self.R[k + dofn][0] = v * self.K[k + dofn, k + dofn];
 				dofn += 1;
-			k += n.getDofNum();
 	
 	def solveEquations(self):
 		u = linalg.cg(self.K.tocsr(), self.R)[0];
@@ -91,9 +92,23 @@ class Model:
 			k += n.getDofNum();
 
 	def outputResult(self):
+		print('View "Disp" {');
 		for e in self.elements:
 			stress = e.getStress();
-			print(stress[0][0]);
+			print('SS (', end='');
+			l1 = [];
+			l2 = [];
+			for i in range(0, 4):
+				l1.append(e.nodes[i].x);
+				l1.append(e.nodes[i].y);
+				l1.append(e.nodes[i].z);
+				#l2.append(stress[2][i]);
+				l2.append(e.nodes[i].values[Dof.X]);
+			print(','.join(map(str, l1)), end='');
+			print(') {', end='');
+			print(','.join(map(str, l2)), end='');
+			print('};');
+		print('};');
 
 	def solve(self):
 		self.init();

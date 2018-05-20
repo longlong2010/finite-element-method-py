@@ -33,7 +33,7 @@ if __name__ == '__main__':
 
 			if mode == 'Node':
 				if len(row) == 4:
-					n = Node(float(row[1]) / 1000, float(row[2]) / 1000, float(row[3]) / 1000);
+					n = Node(row[0], float(row[1]) / 1000, float(row[2]) / 1000, float(row[3]) / 1000);
 					if abs(n.x + 5e-2) < 1e-10:
 						n.addConstraint(Constraint.X);
 						n.addConstraint(Constraint.Y);
