@@ -35,6 +35,7 @@ class Model:
 
 	def integrate(self):
 		ndof = self.getDofNum();
+		K = dict();
 		for e in self.elements:
 			nodes = e.getNodes();
 			size = e.getDofNum();
@@ -52,7 +53,12 @@ class Model:
 				for j in range(0, size):
 					mi = m[i];
 					mj = m[j];
-					self.K[mi, mj] += Ke[i][j];
+					if (mi, mj) in K:
+						K[(mi, mj)] += Ke[i][j];
+					else:
+						K[(mi, mj)] = Ke[i][j];
+					#self.K[mi, mj] += Ke[i][j];
+		self.K._update(K);
 
 	def integrateLoad(self):
 		for n in self.nodes:
@@ -81,7 +87,8 @@ class Model:
 				dofn += 1;
 	
 	def solveEquations(self):
-		u = linalg.cg(self.K.tocsr(), self.R)[0];
+		self.K = self.K.tocsr();
+		u = linalg.cg(self.K, self.R)[0];
 		k = 0;
 		for n in self.nodes:
 			dofs = n.getDofs();
@@ -116,4 +123,4 @@ class Model:
 		self.integrateLoad();
 		self.addConstraint();
 		self.solveEquations();
-		self.outputResult();	
+		self.outputResult();

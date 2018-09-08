@@ -1,5 +1,6 @@
 import abc;
 import numpy;
+import math;
 from enum import Enum;
 Dof = Enum('Dof', 'X Y Z');
 from load import *;
@@ -61,7 +62,8 @@ class Node:
 		return len(self.dofs);
 
 class Element(metaclass = abc.ABCMeta):
-	def __init__(self, nodes, material, points):
+	def __init__(self, eid, nodes, material, points):
+		self.eid = eid;
 		self.nodes = nodes;
 		self.material = material;
 		self.points = points;
@@ -87,12 +89,32 @@ class Element(metaclass = abc.ABCMeta):
 			i += 1;
 		return coord;
 
+	def getTriangleArea(self, nodes):
+		coord = numpy.zeros((len(nodes), 3));
+		k = 0;
+		for n in nodes:
+			coord[k] = numpy.array([n.x, n.y, n.z]);
+			k += 1;
+		A = 0;
+		M = numpy.ones((3, 3));
+		for i in range(0, 3):
+			j = (i + 1) % 3;
+			for k in range(0, 3):
+				M[0, k] = coord[k, i];
+				M[1, k] = coord[k, j];
+			A += numpy.linalg.det(M) ** 2;
+		return 0.5 * math.sqrt(A);
+
 	@abc.abstractmethod	
 	def getShapeDerMatrix(self, p):
 		pass;
 	
 	@abc.abstractmethod
 	def getShapeMatrix(self, p):
+		pass;
+
+	@abc.abstractmethod
+	def addPload(self, load, v, n1, n2):
 		pass;
 
 	def getJacobi(self, p):
@@ -166,8 +188,8 @@ class Element(metaclass = abc.ABCMeta):
 
 
 class Tet4Element(Element):
-	def __init__(self, nodes, material):
-		super(Tet4Element, self).__init__(nodes, material, [[0.25, 0.25, 0.25, 0.25, 1 / 6]]);
+	def __init__(self, eid, nodes, material):
+		super(Tet4Element, self).__init__(eid, nodes, material, [[0.25, 0.25, 0.25, 0.25, 1 / 6]]);
 
 	def getShapeMatrix(self, p):
 		[l1, l2, l3, l4, w] = p;
@@ -199,11 +221,39 @@ class Tet4Element(Element):
 		B = self.getStrainMatrix(self.points[0]);
 		return D.dot(B).dot(u);
 
+	def addPload(self, load, v, n1, n2):
+		k = -1;
+		numbers = [];
+		nodes = [];
+		for i in range(0, 4):
+			n = self.nodes[i];
+			if n == nid:
+				k = i;
+			else:
+				nodes.append(n);
+		assert(k >= 0);
+		if k == 0:
+			numbers += [1, 2, 3];
+		elif k == 1:
+			numbers += [0, 2, 3];
+		elif k == 2:
+			numbers += [0, 1, 3];
+		elif k == 3:
+			numbers += [0, 1, 2];
+
+		A = self.getTriangleArea(nodes);
+		for no in numbers:
+			n = self.nodes[no];
+			dofs = n.getDofs();
+			for dof in dofs:
+				if dof == load.getDof():
+					n.addLoad(load, v / len(numbers) * A);
+
 class Tet10Element(Element):
-	def __init__(self, nodes, material):
+	def __init__(self, eid, nodes, material):
 		alpha = 0.58541020;
 		beta = 0.13819660;
-		super(Tet10Element, self).__init__(nodes, material, [
+		super(Tet10Element, self).__init__(eid, nodes, material, [
 				[alpha, beta, beta, beta, 1 / 24], 
 				[beta, alpha, beta, beta, 1 / 24], 
 				[beta, beta, alpha, beta, 1 / 24], 
@@ -285,3 +335,31 @@ class Tet10Element(Element):
 			stress[:,k] = D.dot(B).dot(u).reshape((6,));
 			k += 1;
 		return stress;
+
+	def addPload(self, load, v, n1, n2):
+		numbers = [];
+		nodes = [];
+		k = -1;
+		for i in range(0, 4):
+			n = self.nodes[i];
+			if n == n2:
+				k = i;
+			else:
+				nodes.append(n);
+		assert(k >= 0);
+		if k == 0:
+			numbers += [5, 8, 9];
+		elif k == 1:
+			numbers += [6, 7 ,9];
+		elif k == 2:
+			numbers += [4, 7, 8];
+		elif k == 3:
+			numbers += [4, 5, 6];
+
+		A = self.getTriangleArea(nodes);
+		for no in numbers:
+			n = self.nodes[no];
+			dofs = n.getDofs();
+			for dof in dofs:
+				if dof == load.getDof():
+					n.addLoad(load, v / len(numbers) * A);

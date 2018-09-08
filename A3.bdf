@@ -1,0 +1,59 @@
+$ NASTRAN input file created by the Patran 2011 64-Bit input file
+$ translator on September 08, 2018 at 15:19:57.
+$ Direct Text Input for Nastran System Cell Section
+$ Direct Text Input for File Management Section
+$ Direct Text Input for Executive Control
+$ Linear Static Analysis, Database
+SOL 101
+CEND
+$ Direct Text Input for Global Case Control Data
+TITLE = MSC.Nastran job created on 03-Sep-18 at 23:11:40
+ECHO = NONE
+SUBCASE 1
+$ Subcase name : Default
+   SUBTITLE=Default
+   SPC = 2
+   LOAD = 2
+   DISPLACEMENT(SORT1,REAL)=ALL
+   SPCFORCES(SORT1,REAL)=ALL
+   STRESS(SORT1,REAL,VONMISES,BILIN)=ALL
+BEGIN BULK
+$ Direct Text Input for Bulk Data
+PARAM    POST    0
+PARAM   PRTMAXIM YES
+$ Elements and Element Properties for region : P1
+PSOLID   1       1       0
+$ Pset: "P1" will be imported as: "psolid.1"
+CTETRA   1       1       1       2       3       4       5       6
+         7       8       9       10
+$ Referenced Material Records
+$ Material Record : STEEL
+$ Description of Material : Date: 03-Sep-18           Time: 23:20:22
+MAT1     1      200000.         .3      7.9-9
+$ Nodes of the Entire Model
+GRID     1               0.      0.      0.
+GRID     2              1.       0.      0.
+GRID     3               0.     1.       0.
+GRID     4               0.      0.     1.
+GRID*    5                              .5              5.19761-9
+*       -2.17389-8
+GRID*    6                              .5              .5
+*       -2.29376-9
+GRID*    7                              -2.08724-10     .5
+*       9.38074-10
+GRID*    8                              5.48461-9       1.29787-8
+*       .5
+GRID*    9                              .5              7.6959-9
+*       .5
+GRID*    10                             1.06701-8       .5
+*       .5
+$ Loads for Load Case : Default
+SPCADD   2       1
+LOAD     2      1.      1.       1
+$ Displacement Constraints of Load Set : BC1
+SPC1     1       123     2       3       4
+$ Pressures of Total Load Set : L1
+PLOAD4   1       1      2.                               3       2
+         0      1.       0.      0.
+$ Referenced Coordinate Frames
+ENDDATA a3a6a2de
