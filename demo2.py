@@ -25,8 +25,8 @@ if __name__ == '__main__':
 
 	for i, e in bdf.elements.items():
 		list = [];
-		for n in e.nodes:
-			list.append(nodes[n.nid]);
+		for nid in e.nodes:
+			list.append(nodes[nid]);
 		element = Tet10Element(e.eid, list, m);
 		elements[e.eid] = element;
 		model.addElement(element);
@@ -35,10 +35,10 @@ if __name__ == '__main__':
 	for i, spc in bdf.spcs.items():
 		for x in spc:
 			if x.type == 'SPC1':
-				for n in x.nodes:
-					nodes[n.nid].addConstraint(Constraint.X);
-					nodes[n.nid].addConstraint(Constraint.Y);
-					nodes[n.nid].addConstraint(Constraint.Z);
+				for nid in x.nodes:
+					nodes[nid].addConstraint(Constraint.X);
+					nodes[nid].addConstraint(Constraint.Y);
+					nodes[nid].addConstraint(Constraint.Z);
 
 	for i, l in bdf.loads.items():
 		for x in l:
@@ -52,9 +52,9 @@ if __name__ == '__main__':
 				v2 = p * x.nvector[1];
 				v3 = p * x.nvector[2];
 
-				e = elements[x.eids[0].eid];
-				n1 = nodes[x.g1.nid];
-				n2 = nodes[x.g34.nid];
+				e = elements[x.eids[0]];
+				n1 = nodes[x.g1];
+				n2 = nodes[x.g34];
 				e.addPload(Load.X, v1, n1, n2);
 				e.addPload(Load.Y, v2, n1, n2);
 				e.addPload(Load.Z, v3, n1, n2);

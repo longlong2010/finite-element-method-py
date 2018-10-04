@@ -101,7 +101,7 @@ class Model:
 	def outputResult(self):
 		print('View "Disp" {');
 		for e in self.elements:
-			stress = e.getStress();
+			#stress = e.getStress();
 			print('SS (', end='');
 			l1 = [];
 			l2 = [];
@@ -110,7 +110,10 @@ class Model:
 				l1.append(e.nodes[i].y);
 				l1.append(e.nodes[i].z);
 				#l2.append(stress[2][i]);
-				l2.append(e.nodes[i].values[Dof.X]);
+				val = 0;
+				for (_, v) in e.nodes[i].values.items():
+					val += v ** 2;
+				l2.append(math.sqrt(val));
 			print(','.join(map(str, l1)), end='');
 			print(') {', end='');
 			print(','.join(map(str, l2)), end='');

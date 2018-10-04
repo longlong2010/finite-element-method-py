@@ -6,6 +6,22 @@ Dof = Enum('Dof', 'X Y Z');
 from load import *;
 from property import *;
 
+def getTriangleArea(nodes):
+	coord = numpy.zeros((len(nodes), 3));
+	k = 0;
+	for n in nodes:
+		coord[k] = numpy.array([n.x, n.y, n.z]);
+		k += 1;
+	A = 0;
+	M = numpy.ones((3, 3));
+	for i in range(0, 3):
+		j = (i + 1) % 3;
+		for k in range(0, 3):
+			M[0, k] = coord[k, i];
+			M[1, k] = coord[k, j];
+		A += numpy.linalg.det(M) ** 2;
+	return 0.5 * math.sqrt(A);
+
 class Node:
 	def __init__(self, nid, x, y, z):
 		self.nid = nid;
@@ -88,22 +104,6 @@ class Element(metaclass = abc.ABCMeta):
 			coord[i] = numpy.array([n.x, n.y, n.z]);
 			i += 1;
 		return coord;
-
-	def getTriangleArea(self, nodes):
-		coord = numpy.zeros((len(nodes), 3));
-		k = 0;
-		for n in nodes:
-			coord[k] = numpy.array([n.x, n.y, n.z]);
-			k += 1;
-		A = 0;
-		M = numpy.ones((3, 3));
-		for i in range(0, 3):
-			j = (i + 1) % 3;
-			for k in range(0, 3):
-				M[0, k] = coord[k, i];
-				M[1, k] = coord[k, j];
-			A += numpy.linalg.det(M) ** 2;
-		return 0.5 * math.sqrt(A);
 
 	@abc.abstractmethod	
 	def getShapeDerMatrix(self, p):
@@ -241,7 +241,7 @@ class Tet4Element(Element):
 		elif k == 3:
 			numbers += [0, 1, 2];
 
-		A = self.getTriangleArea(nodes);
+		A = getTriangleArea(nodes);
 		for no in numbers:
 			n = self.nodes[no];
 			dofs = n.getDofs();
@@ -356,7 +356,7 @@ class Tet10Element(Element):
 		elif k == 3:
 			numbers += [4, 5, 6];
 
-		A = self.getTriangleArea(nodes);
+		A = getTriangleArea(nodes);
 		for no in numbers:
 			n = self.nodes[no];
 			dofs = n.getDofs();
