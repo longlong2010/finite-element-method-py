@@ -25,7 +25,7 @@ if __name__ == '__main__':
 	for i, e in bdf.elements.items():
 		list = [];
 		for n in e.nodes:
-			list.append(nodes[n.nid]); 
+			list.append(nodes[n]); 
 		element = Tet10Element(e.eid, list, m);
 		model.addElement(element);
 
@@ -34,9 +34,9 @@ if __name__ == '__main__':
 		for x in spc:
 			if x.type == 'SPC1':
 				for n in x.nodes:
-					nodes[n.nid].addConstraint(Constraint.X);
-					nodes[n.nid].addConstraint(Constraint.Y);
-					nodes[n.nid].addConstraint(Constraint.Z);
+					nodes[n].addConstraint(Constraint.X);
+					nodes[n].addConstraint(Constraint.Y);
+					nodes[n].addConstraint(Constraint.Z);
 
 	for i, l in bdf.loads.items():
 		for x in l:

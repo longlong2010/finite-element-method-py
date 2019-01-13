@@ -6,22 +6,6 @@ Dof = Enum('Dof', 'X Y Z');
 from load import *;
 from property import *;
 
-def getTriangleArea(nodes):
-	coord = numpy.zeros((len(nodes), 3));
-	k = 0;
-	for n in nodes:
-		coord[k] = numpy.array([n.x, n.y, n.z]);
-		k += 1;
-	A = 0;
-	M = numpy.ones((3, 3));
-	for i in range(0, 3):
-		j = (i + 1) % 3;
-		for k in range(0, 3):
-			M[0, k] = coord[k, i];
-			M[1, k] = coord[k, j];
-		A += numpy.linalg.det(M) ** 2;
-	return 0.5 * math.sqrt(A);
-
 class Node:
 	def __init__(self, nid, x, y, z):
 		self.nid = nid;
@@ -95,7 +79,28 @@ class Element(metaclass = abc.ABCMeta):
 	
 	def getNodes(self):
 		return self.nodes;
+	
+	@abc.abstractmethod	
+	def getShapeDerMatrix(self, p):
+		pass;
+	
+	@abc.abstractmethod
+	def getShapeMatrix(self, p):
+		pass;
 
+	@abc.abstractmethod
+	def getStrainMatrix(self, p):
+		pass;
+	
+	@abc.abstractmethod
+	def getStiffMatrix(self, p):
+		pass;
+
+	@abc.abstractmethod
+	def getStressStrainMatrix(self):
+		pass;
+
+class Element3D(Element, metaclass = abc.ABCMeta):
 	def getCoord(self):
 		nnode = self.getNodeNum();
 		coord = numpy.zeros((nnode, 3));
@@ -104,14 +109,6 @@ class Element(metaclass = abc.ABCMeta):
 			coord[i] = numpy.array([n.x, n.y, n.z]);
 			i += 1;
 		return coord;
-
-	@abc.abstractmethod	
-	def getShapeDerMatrix(self, p):
-		pass;
-	
-	@abc.abstractmethod
-	def getShapeMatrix(self, p):
-		pass;
 
 	@abc.abstractmethod
 	def addPload(self, load, v, n1, n2):
@@ -150,7 +147,7 @@ class Element(metaclass = abc.ABCMeta):
 		for p in self.points:
 			B = self.getStrainMatrix(p);
 			J = self.getJacobi(p);
-			Ke += B.T.dot(D).dot(B) * abs(numpy.linalg.det(J)) * p[4];
+			Ke += B.T.dot(D).dot(B) * abs(numpy.linalg.det(J)) * p[-1];
 		return Ke;
 	
 	def getMassMatrix(self):
@@ -160,7 +157,7 @@ class Element(metaclass = abc.ABCMeta):
 		for p in self.points:
 			N = self.getShapeMatrix(p);
 			J = self.getJacobi(p);
-			Me += rho * N.T.dot(N) * abs(numpy.linalg.det(J)) * p[4];
+			Me += rho * N.T.dot(N) * abs(numpy.linalg.det(J)) * p[-1];
 		return Me;
 
 	def getStressStrainMatrix(self):
@@ -186,17 +183,36 @@ class Element(metaclass = abc.ABCMeta):
 		D *= E / ((1 + nu) * (1 - 2 * nu));
 		return D;
 
+class TetElement(Element3D, metaclass = abc.ABCMeta):
+	@staticmethod
+	def getTriangleArea(nodes):
+		coord = numpy.zeros((len(nodes), 3));
+		k = 0;
+		for n in nodes:
+			coord[k] = numpy.array([n.x, n.y, n.z]);
+			k += 1;
+		A = 0;
+		M = numpy.ones((3, 3));
+		for i in range(0, 3):
+			j = (i + 1) % 3;
+			for k in range(0, 3):
+				M[0, k] = coord[k, i];
+				M[1, k] = coord[k, j];
+			A += numpy.linalg.det(M) ** 2;
+		return 0.5 * math.sqrt(A);
 
-class Tet4Element(Element):
+class Tet4Element(TetElement):
 	def __init__(self, eid, nodes, material):
 		super(Tet4Element, self).__init__(eid, nodes, material, [[0.25, 0.25, 0.25, 0.25, 1 / 6]]);
 
 	def getShapeMatrix(self, p):
 		[l1, l2, l3, l4, w] = p;
 		ndof = self.getDofNum();
+		nnode = self.getNodeNum();
 		N = numpy.zeros((3, ndof));
-		for i in range(0, ndof):
-			N[i % 3][i] = p[i % 3];
+		for i in range(0, nnode):
+			for j in range(0, 3):
+				N[j][i * 3 + j] = p[i];
 		return N;
 
 	def getShapeDerMatrix(self, p):
@@ -241,7 +257,7 @@ class Tet4Element(Element):
 		elif k == 3:
 			numbers += [0, 1, 2];
 
-		A = getTriangleArea(nodes);
+		A = TetElement.getTriangleArea(nodes);
 		for no in numbers:
 			n = self.nodes[no];
 			dofs = n.getDofs();
@@ -249,7 +265,7 @@ class Tet4Element(Element):
 				if dof == load.getDof():
 					n.addLoad(load, v / len(numbers) * A);
 
-class Tet10Element(Element):
+class Tet10Element(TetElement):
 	def __init__(self, eid, nodes, material):
 		alpha = 0.58541020;
 		beta = 0.13819660;
@@ -275,8 +291,9 @@ class Tet10Element(Element):
 		Fun[8] = 4 * l2 * l4;
 		Fun[9] = 4 * l3 * l4;
 		N = numpy.zeros((3, ndof));
-		for i in range(0, ndof):
-			N[i % 3][i] = Fun[i % 3];
+		for i in range(0, nnode):
+			for j in range(0, 3):
+				N[j][i * 3 + j] = Fun[i];
 		return N;
 
 	def getShapeDerMatrix(self, p):
@@ -356,10 +373,84 @@ class Tet10Element(Element):
 		elif k == 3:
 			numbers += [4, 5, 6];
 
-		A = getTriangleArea(nodes);
+		A = TetElement.getTriangleArea(nodes);
 		for no in numbers:
 			n = self.nodes[no];
 			dofs = n.getDofs();
 			for dof in dofs:
 				if dof == load.getDof():
 					n.addLoad(load, v / len(numbers) * A);
+
+class Element1D(Element, metaclass = abc.ABCMeta):
+	def getLength(self):
+		n1 = self.nodes[0];
+		n2 = self.nodes[-1];
+		return math.sqrt((n2.x - n1.x) ** 2 + (n2.y - n1.y) ** 2 + (n2.z - n1.z) ** 2);
+
+class Truss(Element1D, metaclass = abc.ABCMeta):
+	def getStressStrainMatrix(self):
+		D = numpy.zeros((1, 1));
+		D[0, 0] = self.material.getProperty(MaterialProperty.E);
+		return D;
+	
+	def getStrainMatrix(self, p):
+		L = self.getLength();
+		Der = self.getShapeDerMatrix(p);
+		ndof = self.getDofNum();
+		nnode = self.getNodeNum();
+		B = numpy.zeros((1, ndof));
+		for i in range(0, nnode):
+			B[0, i * 3] = Der[0, i] * 2 / L;
+		return B;
+	
+	def getStiffMatrix(self):
+		nnode = self.getNodeNum();
+		ndof = self.getDofNum();
+		Ke = numpy.zeros((ndof, ndof));
+		D = self.getStressStrainMatrix();
+		n1 = self.nodes[0];
+		n2 = self.nodes[1];
+		n = numpy.array([n2.x - n1.x, n2.y - n1.y, n2.z - n1.z]);
+		L = numpy.linalg.norm(n);
+		n = n / L;
+		for p in self.points:
+			B = self.getStrainMatrix(p);
+			Ke += B.T * D * B * L * p[-1];
+		T = numpy.zeros(((ndof, ndof)));
+		for i in range(0, nnode):
+			T[i * 3, i * 3 : i * 3 + 3] = n;
+		return T.T.dot(Ke).dot(T);
+
+class Truss2(Truss):
+	def __init__(self, eid, nodes, material):
+		super(Truss2, self).__init__(eid, nodes, material, [[0, 1]]);
+
+	def getShapeMatrix(self, p):
+		[xi, w] = p;
+		ndof = self.getDofNum();
+		N = numpy.zeros((3, ndof));
+		N[0, 0] = (1 - xi) / 2;
+		N[3, 0] = (1 + xi) / 2;
+		return N;
+
+	def getShapeDerMatrix(self, p):
+		nnode = self.getNodeNum();
+		Der = numpy.zeros((1, nnode));
+		Der[0, 0] = - 1 / 2;
+		Der[0, 1] = 1 / 2;
+		return Der;
+
+if __name__ == '__main__':
+	n1 = Node(1, 0, 0, 0);
+	n2 = Node(2, 1, 1, 0);
+	n3 = Node(3, 1, 0, 0);
+	E = 1;
+	rho = 7.9e3;
+	nu = 0.3;
+
+	m = Material();
+	m.setProperty(MaterialProperty.E, E);
+	m.setProperty(MaterialProperty.rho, rho);
+	m.setProperty(MaterialProperty.nu, nu);
+	t = Truss2(1, [n1, n2], m);
+	print(t.getStiffMatrix());
