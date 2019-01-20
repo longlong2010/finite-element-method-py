@@ -415,7 +415,7 @@ class Truss(Element1D, metaclass = abc.ABCMeta):
 		n = n / L;
 		for p in self.points:
 			B = self.getStrainMatrix(p);
-			Ke += B.T * D * B * L * p[-1];
+			Ke += B.T.dot(D).dot(B) * L * p[-1];
 		T = numpy.zeros(((ndof, ndof)));
 		for i in range(0, nnode):
 			T[i * 3, i * 3 : i * 3 + 3] = n;
@@ -430,7 +430,7 @@ class Truss2(Truss):
 		ndof = self.getDofNum();
 		N = numpy.zeros((3, ndof));
 		N[0, 0] = (1 - xi) / 2;
-		N[3, 0] = (1 + xi) / 2;
+		N[0, 3] = (1 + xi) / 2;
 		return N;
 
 	def getShapeDerMatrix(self, p):
