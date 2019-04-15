@@ -62,10 +62,10 @@ class Node:
 		return len(self.dofs);
 
 class Element(metaclass = abc.ABCMeta):
-	def __init__(self, eid, nodes, material, points):
+	def __init__(self, eid, nodes, property, points):
 		self.eid = eid;
 		self.nodes = nodes;
-		self.material = material;
+		self.property = property;
 		self.points = points;
 	
 	def getNodeNum(self):
@@ -153,7 +153,7 @@ class Element3D(Element, metaclass = abc.ABCMeta):
 	def getMassMatrix(self):
 		ndof = self.getDofNum();
 		Me = numpy.zeros((ndof, ndof));
-		rho = self.material.getProperty(MaterialProperty.rho);
+		rho = self.property.material.getProperty(MaterialProperty.rho);
 		for p in self.points:
 			N = self.getShapeMatrix(p);
 			J = self.getJacobi(p);
@@ -162,8 +162,8 @@ class Element3D(Element, metaclass = abc.ABCMeta):
 
 	def getStressStrainMatrix(self):
 		D = numpy.zeros((6, 6));
-		E = self.material.getProperty(MaterialProperty.E);
-		nu = self.material.getProperty(MaterialProperty.nu);
+		E = self.property.material.getProperty(MaterialProperty.E);
+		nu = self.property.material.getProperty(MaterialProperty.nu);
 		D[0][0] = 1 - nu;
 		D[0][1] = nu;
 		D[0][2] = nu;
@@ -202,8 +202,8 @@ class TetElement(Element3D, metaclass = abc.ABCMeta):
 		return 0.5 * math.sqrt(A);
 
 class Tet4Element(TetElement):
-	def __init__(self, eid, nodes, material):
-		super(Tet4Element, self).__init__(eid, nodes, material, [[0.25, 0.25, 0.25, 0.25, 1 / 6]]);
+	def __init__(self, eid, nodes, property):
+		super(Tet4Element, self).__init__(eid, nodes, property, [[0.25, 0.25, 0.25, 0.25, 1 / 6]]);
 
 	def getShapeMatrix(self, p):
 		[l1, l2, l3, l4, w] = p;
@@ -266,10 +266,10 @@ class Tet4Element(TetElement):
 					n.addLoad(load, v / len(numbers) * A);
 
 class Tet10Element(TetElement):
-	def __init__(self, eid, nodes, material):
+	def __init__(self, eid, nodes, property):
 		alpha = 0.58541020;
 		beta = 0.13819660;
-		super(Tet10Element, self).__init__(eid, nodes, material, [
+		super(Tet10Element, self).__init__(eid, nodes, property, [
 				[alpha, beta, beta, beta, 1 / 24], 
 				[beta, alpha, beta, beta, 1 / 24], 
 				[beta, beta, alpha, beta, 1 / 24], 
@@ -390,7 +390,7 @@ class Element1D(Element, metaclass = abc.ABCMeta):
 class Truss(Element1D, metaclass = abc.ABCMeta):
 	def getStressStrainMatrix(self):
 		D = numpy.zeros((1, 1));
-		D[0, 0] = self.material.getProperty(MaterialProperty.E);
+		D[0, 0] = self.property.material.getProperty(MaterialProperty.E);
 		return D;
 	
 	def getStrainMatrix(self, p):
@@ -408,6 +408,7 @@ class Truss(Element1D, metaclass = abc.ABCMeta):
 		ndof = self.getDofNum();
 		Ke = numpy.zeros((ndof, ndof));
 		D = self.getStressStrainMatrix();
+		A = self.property.A;
 		n1 = self.nodes[0];
 		n2 = self.nodes[1];
 		n = numpy.array([n2.x - n1.x, n2.y - n1.y, n2.z - n1.z]);
@@ -415,7 +416,7 @@ class Truss(Element1D, metaclass = abc.ABCMeta):
 		n = n / L;
 		for p in self.points:
 			B = self.getStrainMatrix(p);
-			Ke += B.T.dot(D).dot(B) * L * p[-1];
+			Ke += B.T.dot(D).dot(B) * L * A * p[-1];
 		T = numpy.zeros(((ndof, ndof)));
 		for i in range(0, nnode):
 			T[i * 3, i * 3 : i * 3 + 3] = n;
@@ -447,10 +448,15 @@ if __name__ == '__main__':
 	E = 1;
 	rho = 7.9e3;
 	nu = 0.3;
+	A = 1e-4;
 
 	m = Material();
 	m.setProperty(MaterialProperty.E, E);
 	m.setProperty(MaterialProperty.rho, rho);
 	m.setProperty(MaterialProperty.nu, nu);
-	t = Truss2(1, [n1, n2], m);
+	
+	p = Property1D(m, A);
+
+
+	t = Truss2(1, [n1, n2], p);
 	print(t.getStiffMatrix());

@@ -4,9 +4,10 @@ from property import *;
 from pyNastran.bdf.bdf import BDF, read_bdf;
 import numpy;
 import time;
+import sys;
 
 if __name__ == '__main__':
-	numpy.set_printoptions(threshold = numpy.nan);
+	numpy.set_printoptions(threshold = sys.maxsize);
 	E = 200e3;
 	rho = 7.9e-9;
 	nu = 0.3;
@@ -17,6 +18,7 @@ if __name__ == '__main__':
 	m.setProperty(MaterialProperty.rho, rho);
 	m.setProperty(MaterialProperty.E, E);
 	m.setProperty(MaterialProperty.nu, nu);
+	p = Property3D(m);
 	nodes = dict();
 	for i, n in bdf.nodes.items():
 		node = Node(n.nid, n.xyz[0], n.xyz[1], n.xyz[2]);
@@ -26,7 +28,7 @@ if __name__ == '__main__':
 		list = [];
 		for n in e.nodes:
 			list.append(nodes[n]); 
-		element = Tet10Element(e.eid, list, m);
+		element = Tet10Element(e.eid, list, p);
 		model.addElement(element);
 
 

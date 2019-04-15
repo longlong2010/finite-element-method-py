@@ -2,11 +2,11 @@ from load import *;
 from geometry import *;
 from property import *;
 from model import *;
-
+import sys;
 import csv;
 
 if __name__ == '__main__':
-	numpy.set_printoptions(threshold = numpy.nan);
+	numpy.set_printoptions(threshold = sys.maxsize);
 	E = 200e9;
 	rho = 7.9e3;
 	nu = 0.3;
@@ -17,6 +17,8 @@ if __name__ == '__main__':
 	m.setProperty(MaterialProperty.E, E);
 	m.setProperty(MaterialProperty.rho, rho);
 	m.setProperty(MaterialProperty.nu, nu);
+
+	p = Property3D(m);
 
 	nodes = dict();
 	l = 0;
@@ -48,7 +50,7 @@ if __name__ == '__main__':
 					n2 = nodes[row[6]];
 					n3 = nodes[row[7]];
 					n4 = nodes[row[8]];
-					model.addElement(Tet4Element(0, [n1, n2, n3, n4], m));
+					model.addElement(Tet4Element(0, [n1, n2, n3, n4], p));
 	model.solve();
 	#n1 = Node(1, 0, 0);
 	#n2 = Node(0, 1, 0);
