@@ -7,17 +7,21 @@ class Model:
 	def __init__(self):
 		self.nodes = [];
 		self.elements = [];
+		self.node_set = set();
+		self.element_set = set();
 
 	def addElement(self, e):
 		nodes = e.getNodes();
 		for n in nodes:
-			if n not in self.nodes:
+			if n not in self.node_set:
 				if len(self.nodes) > 0:
 					_n = self.nodes[-1];
 					n.setFid( _n.getFid() + _n.getDofNum());
 				self.nodes.append(n);
-		if e not in self.elements:
+				self.node_set.add(n);
+		if e not in self.element_set:
 			self.elements.append(e);
+			self.element_set.add(e);
 
 	def getDofNum(self):
 		ndof = 0;
@@ -30,12 +34,14 @@ class Model:
 
 	def init(self):
 		ndof = self.getDofNum();
-		self.K = scipy.sparse.dok_matrix((ndof, ndof));
+		self.K = scipy.sparse.coo_matrix((ndof, ndof));
 		self.R = numpy.zeros((ndof, 1));
 
 	def integrate(self):
 		ndof = self.getDofNum();
-		K = dict();
+		row = [];
+		col = [];
+		data = [];
 		for e in self.elements:
 			nodes = e.getNodes();
 			size = e.getDofNum();
@@ -53,12 +59,11 @@ class Model:
 				for j in range(0, size):
 					mi = m[i];
 					mj = m[j];
-					if (mi, mj) in K:
-						K[(mi, mj)] += Ke[i][j];
-					else:
-						K[(mi, mj)] = Ke[i][j];
-					#self.K[mi, mj] += Ke[i][j];
-		self.K._update(K);
+					if Ke[i][j] != 0:
+						row.append(mi);
+						col.append(mj);
+						data.append(Ke[i][j]);
+		self.K = scipy.sparse.coo_matrix((data, (row, col)), shape=(ndof, ndof)).tocsr();
 
 	def integrateLoad(self):
 		for n in self.nodes:
@@ -87,7 +92,6 @@ class Model:
 				dofn += 1;
 	
 	def solveEquations(self):
-		self.K = self.K.tocsr();
 		u = linalg.cg(self.K, self.R)[0];
 		k = 0;
 		for n in self.nodes:
